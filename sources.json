@@ -1,9 +1,9 @@
 [
   {
     "id": "figc-terni-comunicati",
-    "name": "FIGC Terni - Comunicati (test)",
+    "name": "FIGC Terni - Comunicati",
     "url": "https://www.figc-cru.com/comunicati.php?idc=8&stagione=2026/2027",
     "selector": "div.data, div.titolo, div.testo",
-    "interval_min": 15
+    "interval_min": 5
   }
 ]
