@@ -34,7 +34,12 @@ def extract_text(html: str, selector: str | None) -> str:
     if selector:
         nodes = soup.select(selector)
         if not nodes:
-            raise ValueError(f"Selettore non trovato: {selector!r}")
+            # Titolo e dimensione aiutano a capire se il sito ha restituito un'altra pagina.
+            title = soup.title.get_text(strip=True) if soup.title else None
+            raise ValueError(
+                f"Selettore non trovato: {selector!r} "
+                f"(titolo pagina: {title!r}, {len(html)} caratteri)"
+            )
         raw = "\n".join(node.get_text(" ", strip=True) for node in nodes)
     else:
         raw = soup.get_text(" ", strip=True)
