@@ -12,5 +12,12 @@
     "url": "https://gentili76.github.io/collettore-notifiche/test.html",
     "selector": "#cose",
     "interval_min": 5
+  },
+  {
+    "id": "hortinaeclasses",
+    "name": "hortinaeclasses notifica",
+    "url": "https://www.hortinaeclasses.it/not.html",
+    "selector": null,
+    "interval_min": 5
   }
 ]
