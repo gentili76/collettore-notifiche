@@ -4,6 +4,9 @@
     <!-- Android 13+: permesso richiesto a runtime per mostrare le notifiche. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Caricamento delle favicon nel feed. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

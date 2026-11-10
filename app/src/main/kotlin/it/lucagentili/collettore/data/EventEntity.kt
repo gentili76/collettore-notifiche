@@ -1,5 +1,6 @@
 package it.lucagentili.collettore.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,4 +16,6 @@ data class EventEntity(
   val detectedAt: Long,
   /** Istante in cui l'app ha ricevuto il messaggio (epoch millisecondi). */
   val receivedAt: Long,
+  /** true quando l'utente ha aperto l'evento: passa nella tab "viste". */
+  @ColumnInfo(defaultValue = "0") val seen: Boolean = false,
 )
