@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.idea/
+*.iml
+local.properties
+.gradle/
+build/
+app/google-services.json
+*.jks
+*.keystore
+service-account*.json

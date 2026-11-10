@@ -1,0 +1,9 @@
+[
+  {
+    "id": "esempio",
+    "name": "Pagina di esempio",
+    "url": "https://example.com/",
+    "selector": null,
+    "interval_min": 15
+  }
+]
