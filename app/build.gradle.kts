@@ -14,8 +14,8 @@ android {
     targetSdk = 37
     // Schema: MMmmRR (maggiore, minore, revisione), es. 010100 = 1.1.0 rev. 0,
     // 010101 = 1.1.0 rev. 1. In Kotlin i letterali senza 0 iniziale: 10100 = 010100.
-    versionCode = 10100
-    versionName = "1.1.0"
+    versionCode = 10101
+    versionName = "1.1.0-r1"
   }
 
   buildTypes {
