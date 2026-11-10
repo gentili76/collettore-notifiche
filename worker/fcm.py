@@ -30,8 +30,10 @@ def send_event(event: dict) -> None:
     """Invia un evento come messaggio al topic.
 
     `event` deve contenere: title, body, url, source_id, ts.
-    Il payload `data` serve all'app per salvare l'evento nel feed;
-    il blocco `notification` permette la notifica anche con app in background.
+
+    Il messaggio e' solo `data` (niente blocco `notification`): cosi' l'app
+    riceve sempre l'evento, anche in background, e lo salva nello storico
+    prima di mostrare la notifica.
     """
     import requests  # import locale: serve solo quando si invia davvero
 
@@ -40,7 +42,6 @@ def send_event(event: dict) -> None:
     message = {
         "message": {
             "topic": TOPIC,
-            "notification": {"title": event["title"], "body": event["body"]},
             "data": {k: str(v) for k, v in event.items()},
             "android": {"priority": "high"},
         }
