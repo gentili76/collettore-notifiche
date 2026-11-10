@@ -103,7 +103,6 @@ def main() -> int:
     force = "--force" in sys.argv
     sources = load_json(SOURCES_FILE, [])
     now = time.time()
-    failures = 0
 
     for source in sources:
         state_path = STATE_DIR / f"{source['id']}.json"
@@ -115,13 +114,13 @@ def main() -> int:
         try:
             new_state = check_source(source, state, now)
         except Exception as exc:  # una sorgente rotta non blocca le altre
-            failures += 1
-            print(f"[{source['id']}] ERRORE: {exc}", file=sys.stderr)
+            # ::warning:: crea un'annotazione sul run senza farlo fallire.
+            print(f"::warning::[{source['id']}] ERRORE: {exc}")
             continue
 
         save_json(state_path, new_state)
 
-    return 1 if failures else 0
+    return 0
 
 
 if __name__ == "__main__":

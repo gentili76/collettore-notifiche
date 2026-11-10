@@ -11,6 +11,12 @@ interface EventDao {
   @Insert(onConflict = OnConflictStrategy.ABORT)
   suspend fun insert(event: EventEntity): Long
 
-  @Query("SELECT * FROM events ORDER BY receivedAt DESC")
-  fun observeAll(): Flow<List<EventEntity>>
+  @Query("SELECT * FROM events WHERE seen = 0 ORDER BY receivedAt DESC")
+  fun observeUnseen(): Flow<List<EventEntity>>
+
+  @Query("SELECT * FROM events WHERE seen = 1 ORDER BY receivedAt DESC")
+  fun observeSeen(): Flow<List<EventEntity>>
+
+  @Query("UPDATE events SET seen = 1 WHERE id = :id")
+  suspend fun markSeen(id: Long)
 }
