@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Collettore Notifiche - Sorgenti</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #1b1b1f; }
+    h1 { font-size: 1.5rem; }
+    fieldset { border: 1px solid #bbb; border-radius: 8px; margin: 0 0 1rem; }
+    .source { border: 1px solid #bbb; border-radius: 8px; padding: 1rem; margin-bottom: .75rem; display: grid; gap: .5rem; }
+    label { display: grid; gap: .25rem; font-size: .9rem; }
+    input { padding: .4rem; font: inherit; max-width: 100%; box-sizing: border-box; }
+    .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: .75rem; }
+    button { padding: .5rem .9rem; font: inherit; cursor: pointer; }
+    .danger { color: #b00020; justify-self: start; }
+    .err { color: #b00020; }
+    .ok { color: #1b6e20; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #121212; color: #eee; }
+      fieldset, .source { border-color: #555; }
+      input { background: #1e1e1e; color: #eee; border: 1px solid #555; }
+      .ok { color: #7bd88a; }
+      .err, .danger { color: #ff8a80; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sorgenti monitorate</h1>
+
+  <fieldset>
+    <legend>Accesso GitHub</legend>
+    <div class="row">
+      <input id="token" type="password" size="50" aria-label="Token GitHub" placeholder="Token GitHub (fine-grained, Contents: read/write)">
+      <button id="saveToken">Salva token</button>
+    </div>
+    <p id="tokenMsg"></p>
+  </fieldset>
+
+  <div class="row">
+    <button id="reload">Ricarica da GitHub</button>
+    <button id="add">+ Aggiungi sorgente</button>
+    <button id="save">Salva su GitHub</button>
+  </div>
+  <p id="status"></p>
+
+  <div id="list"></div>
+
+  <script>
+    const OWNER = "gentili76";
+    const REPO = "collettore-notifiche";
+    const BRANCH = "main";
+    const FILE = "sources.json";
+    const API = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${FILE}`;
+    const TOKEN_KEY = "cn-github-token";
+
+    let sources = [];
+    let fileSha = null;
+
+    const $ = (id) => document.getElementById(id);
+
+    function getToken() {
+      return localStorage.getItem(TOKEN_KEY) || "";
+    }
+
+    function setStatus(msg, cls = "") {
+      const el = $("status");
+      el.textContent = msg;
+      el.className = cls;
+    }
+
+    function b64encode(text) {
+      const bytes = new TextEncoder().encode(text);
+      let bin = "";
+      bytes.forEach((b) => (bin += String.fromCharCode(b)));
+      return btoa(bin);
+    }
+
+    function b64decode(b64) {
+      const bin = atob(b64.replace(/\n/g, ""));
+      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    }
+
+    async function gh(method, body) {
+      const token = getToken();
+      if (!token) throw new Error("Inserisci prima il token GitHub.");
+      const url = method === "GET" ? `${API}?ref=${BRANCH}` : API;
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          ...(body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`GitHub ha risposto ${res.status}: ${text.slice(0, 200)}`);
+      }
+      return res.json();
+    }
+
+    async function load() {
+      setStatus("Carico da GitHub...");
+      try {
+        const data = await gh("GET");
+        fileSha = data.sha;
+        sources = JSON.parse(b64decode(data.content));
+        render();
+        setStatus(`Caricate ${sources.length} sorgenti.`, "ok");
+      } catch (e) {
+        setStatus(e.message, "err");
+      }
+    }
+
+    function validate() {
+      const errors = [];
+      const ids = new Set();
+      sources.forEach((s, i) => {
+        const n = i + 1;
+        if (!/^[a-z0-9-]+$/.test(s.id || "")) {
+          errors.push(`#${n}: l'ID deve contenere solo a-z, 0-9 e trattini`);
+        } else if (ids.has(s.id)) {
+          errors.push(`#${n}: ID "${s.id}" duplicato`);
+        }
+        ids.add(s.id);
+        if (!s.name) errors.push(`#${n}: nome mancante`);
+        if (!/^https?:\/\/\S+$/.test(s.url || "")) errors.push(`#${n}: URL non valido`);
+        if (!Number.isInteger(s.interval_min) || s.interval_min < 5) {
+          errors.push(`#${n}: intervallo minimo 5 minuti`);
+        }
+      });
+      return errors;
+    }
+
+    function field(label, value, type, onInput) {
+      const wrap = document.createElement("label");
+      wrap.textContent = label;
+      const input = document.createElement("input");
+      input.type = type;
+      input.size = 60;
+      input.value = value ?? "";
+      input.addEventListener("input", () => onInput(input.value));
+      wrap.appendChild(input);
+      return wrap;
+    }
+
+    function render() {
+      const list = $("list");
+      list.replaceChildren();
+      sources.forEach((s, i) => {
+        const card = document.createElement("div");
+        card.className = "source";
+        card.append(
+          field("ID (univoco, a-z 0-9 -)", s.id, "text", (v) => (s.id = v.trim())),
+          field("Nome nella notifica", s.name, "text", (v) => (s.name = v)),
+          field("URL", s.url, "url", (v) => (s.url = v.trim())),
+          field("Selettore CSS (vuoto = tutta la pagina)", s.selector ?? "", "text",
+            (v) => (s.selector = v.trim() || null)),
+          field("Intervallo (minuti)", s.interval_min, "number",
+            (v) => (s.interval_min = Number(v))),
+        );
+        const del = document.createElement("button");
+        del.textContent = "Elimina";
+        del.className = "danger";
+        del.addEventListener("click", () => {
+          if (confirm(`Eliminare "${s.name || s.id}"?`)) {
+            sources.splice(i, 1);
+            render();
+          }
+        });
+        card.appendChild(del);
+        list.appendChild(card);
+      });
+    }
+
+    async function save() {
+      const errors = validate();
+      if (errors.length) {
+        setStatus(errors.join(" | "), "err");
+        return;
+      }
+      if (!confirm(`Salvare ${sources.length} sorgenti su GitHub (branch ${BRANCH})?`)) return;
+      setStatus("Salvataggio...");
+      try {
+        const content = JSON.stringify(sources, null, 2) + "\n";
+        const res = await gh("PUT", {
+          message: "chore: aggiorna sorgenti da pannello web",
+          content: b64encode(content),
+          sha: fileSha,
+          branch: BRANCH,
+        });
+        fileSha = res.content.sha;
+        setStatus("Salvato. Il prossimo controllo userà le nuove sorgenti.", "ok");
+      } catch (e) {
+        setStatus(e.message + " (se il file è cambiato altrove, ricarica prima)", "err");
+      }
+    }
+
+    $("saveToken").addEventListener("click", () => {
+      const t = $("token").value.trim();
+      if (!t) {
+        localStorage.removeItem(TOKEN_KEY);
+        $("tokenMsg").textContent = "Token rimosso da questo browser.";
+        return;
+      }
+      localStorage.setItem(TOKEN_KEY, t);
+      $("token").value = "";
+      $("tokenMsg").textContent = "Token salvato in questo browser.";
+      load();
+    });
+
+    $("reload").addEventListener("click", load);
+    $("add").addEventListener("click", () => {
+      sources.push({ id: "", name: "", url: "https://", selector: null, interval_min: 15 });
+      render();
+    });
+    $("save").addEventListener("click", save);
+
+    if (getToken()) {
+      $("tokenMsg").textContent = "Token già salvato in questo browser.";
+      load();
+    }
+  </script>
+</body>
+</html>
