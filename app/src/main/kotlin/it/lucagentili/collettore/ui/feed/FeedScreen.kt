@@ -26,12 +26,16 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -85,6 +89,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
           emptyTitle = "Nessuna modifica nuova",
           emptyBody = "Quando una sorgente monitorata cambia, l'evento compare qui.",
           onOpen = viewModel::markSeen,
+          onSwipeSeen = viewModel::markSeen,
         )
       } else {
         EventList(
@@ -92,18 +97,25 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
           emptyTitle = "Nessun evento visto",
           emptyBody = "Gli eventi che apri compaiono qui.",
           onOpen = viewModel::markSeen,
+          onSwipeSeen = null,
         )
       }
     }
   }
 }
 
+/**
+ * Lista eventi. Con [onSwipeSeen] valorizzato, lo swipe verso destra segna l'evento come
+ * visto senza aprire il sito (tab "nuove"). Con null lo swipe è disattivato (tab "viste").
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EventList(
   events: List<EventEntity>,
   emptyTitle: String,
   emptyBody: String,
   onOpen: (EventEntity) -> Unit,
+  onSwipeSeen: ((EventEntity) -> Unit)?,
 ) {
   if (events.isEmpty()) {
     EmptyFeed(emptyTitle, emptyBody, Modifier.fillMaxSize())
@@ -116,28 +128,59 @@ private fun EventList(
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     items(events, key = { it.id }) { event ->
-      Card(
-        modifier =
-          Modifier.fillMaxWidth().clickable(enabled = event.url.isNotBlank()) {
-            onOpen(event)
-            uriHandler.openUri(event.url)
-          },
-        colors = CardDefaults.cardColors(),
-      ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-          SiteIcon(event.url)
-          Spacer(Modifier.width(12.dp))
-          Column(modifier = Modifier.weight(1f)) {
-            Text(event.title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(event.body, style = MaterialTheme.typography.bodyMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(
-              formatTime(event.detectedAt * 1000),
-              style = MaterialTheme.typography.labelSmall,
-            )
-          }
+      val dismissState = rememberSwipeToDismissBoxState()
+      LaunchedEffect(dismissState.currentValue) {
+        if (dismissState.currentValue == SwipeToDismissBoxValue.StartToEnd) {
+          onSwipeSeen?.invoke(event)
         }
+      }
+      SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = onSwipeSeen != null,
+        enableDismissFromEndToStart = false,
+        backgroundContent = { SeenBackground() },
+      ) {
+        EventCard(event) {
+          onOpen(event)
+          uriHandler.openUri(event.url)
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun SeenBackground() {
+  Box(
+    modifier =
+      Modifier.fillMaxSize()
+        .background(MaterialTheme.colorScheme.secondaryContainer)
+        .padding(start = 24.dp),
+    contentAlignment = Alignment.CenterStart,
+  ) {
+    Text("Vista", color = MaterialTheme.colorScheme.onSecondaryContainer)
+  }
+}
+
+@Composable
+private fun EventCard(event: EventEntity, onClick: () -> Unit) {
+  Card(
+    modifier =
+      Modifier.fillMaxWidth().clickable(enabled = event.url.isNotBlank()) { onClick() },
+    colors = CardDefaults.cardColors(),
+  ) {
+    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
+      SiteIcon(event.url)
+      Spacer(Modifier.width(12.dp))
+      Column(modifier = Modifier.weight(1f)) {
+        Text(event.title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(event.body, style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.height(8.dp))
+        Text(
+          formatTime(event.detectedAt * 1000),
+          style = MaterialTheme.typography.labelSmall,
+        )
       }
     }
   }
