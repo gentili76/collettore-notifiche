@@ -31,7 +31,7 @@ class CollettoreMessagingService : FirebaseMessagingService() {
     val notificationId = (sourceId + detectedAt).hashCode()
 
     Notifications.ensureChannel(this)
-    Notifications.show(this, notificationId, title, body, url)
+    Notifications.show(this, notificationId, title, body)
 
     scope.launch {
       AppDatabase.get(applicationContext).eventDao().insert(

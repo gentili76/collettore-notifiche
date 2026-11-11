@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -30,7 +29,7 @@ object Notifications {
    * Mostra la notifica. Se il permesso POST_NOTIFICATIONS non è concesso
    * l'evento resta comunque nello storico, ma nessuna notifica viene mostrata.
    */
-  fun show(context: Context, notificationId: Int, title: String, body: String, url: String) {
+  fun show(context: Context, notificationId: Int, title: String, body: String) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
       ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
         PackageManager.PERMISSION_GRANTED
@@ -38,13 +37,9 @@ object Notifications {
       return
     }
 
-    // Tap: apre la pagina della sorgente nel browser, altrimenti l'app.
+    // Tap: apre l'app sulla tab "nuove" con l'ultimo evento evidenziato (non apre il sito).
     val openIntent =
-      if (url.isNotBlank()) {
-        Intent(Intent.ACTION_VIEW, Uri.parse(url))
-      } else {
-        Intent(context, MainActivity::class.java)
-      }
+      Intent(context, MainActivity::class.java).putExtra(MainActivity.EXTRA_OPEN_NEWEST, true)
     val pending = PendingIntent.getActivity(
       context,
       notificationId,
