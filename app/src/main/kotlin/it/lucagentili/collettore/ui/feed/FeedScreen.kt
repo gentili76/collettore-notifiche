@@ -40,6 +40,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -58,14 +59,39 @@ import java.net.URL
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.seconds
 
+/**
+ * [openRequest] cresce ogni volta che l'app viene aperta da una notifica: la tab "nuove"
+ * si attiva e l'evento più recente viene evidenziato per qualche secondo.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
+fun FeedScreen(openRequest: Int = 0, viewModel: FeedViewModel = viewModel()) {
   val unseen by viewModel.unseen.collectAsStateWithLifecycle()
   val seen by viewModel.seen.collectAsStateWithLifecycle()
   var tab by rememberSaveable { mutableIntStateOf(0) }
+  var highlightId by remember { mutableStateOf<Long?>(null) }
+  var handledRequest by remember { mutableIntStateOf(0) }
+
+  LaunchedEffect(openRequest) {
+    if (openRequest > 0) tab = 0
+  }
+  // Attende i dati: se la lista è ancora vuota, evidenzia appena arriva il primo evento.
+  LaunchedEffect(openRequest, unseen) {
+    if (openRequest > handledRequest && unseen.isNotEmpty()) {
+      handledRequest = openRequest
+      highlightId = unseen.first().id
+    }
+  }
+  LaunchedEffect(highlightId) {
+    if (highlightId != null) {
+      delay(5.seconds)
+      highlightId = null
+    }
+  }
 
   Scaffold(
     topBar = { TopAppBar(title = { Text("Collettore") }) },
@@ -90,6 +116,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
           emptyBody = "Quando una sorgente monitorata cambia, l'evento compare qui.",
           onOpen = viewModel::markSeen,
           onSwipeSeen = viewModel::markSeen,
+          highlightId = highlightId,
         )
       } else {
         EventList(
@@ -98,6 +125,7 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
           emptyBody = "Gli eventi che apri compaiono qui.",
           onOpen = viewModel::markSeen,
           onSwipeSeen = null,
+          highlightId = null,
         )
       }
     }
@@ -116,6 +144,7 @@ private fun EventList(
   emptyBody: String,
   onOpen: (EventEntity) -> Unit,
   onSwipeSeen: ((EventEntity) -> Unit)?,
+  highlightId: Long?,
 ) {
   if (events.isEmpty()) {
     EmptyFeed(emptyTitle, emptyBody, Modifier.fillMaxSize())
@@ -140,7 +169,7 @@ private fun EventList(
         enableDismissFromEndToStart = false,
         backgroundContent = { SeenBackground() },
       ) {
-        EventCard(event) {
+        EventCard(event, highlighted = event.id == highlightId) {
           onOpen(event)
           uriHandler.openUri(event.url)
         }
@@ -163,11 +192,16 @@ private fun SeenBackground() {
 }
 
 @Composable
-private fun EventCard(event: EventEntity, onClick: () -> Unit) {
+private fun EventCard(event: EventEntity, highlighted: Boolean, onClick: () -> Unit) {
   Card(
     modifier =
       Modifier.fillMaxWidth().clickable(enabled = event.url.isNotBlank()) { onClick() },
-    colors = CardDefaults.cardColors(),
+    colors =
+      if (highlighted) {
+        CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+      } else {
+        CardDefaults.cardColors()
+      },
   ) {
     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
       SiteIcon(event.url)
