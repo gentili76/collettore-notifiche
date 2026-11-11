@@ -13,6 +13,7 @@ invia una push FCM all'app Android. L'app salva ogni evento in un feed locale, d
 | Esecuzioni pagina pannello (Pages) | https://github.com/gentili76/collettore-notifiche/actions/workflows/pages.yml |
 | Pannello web sorgenti | https://gentili76.github.io/collettore-notifiche/ |
 | Pagina di test | https://gentili76.github.io/collettore-notifiche/test.html |
+| Modifica pagina di test (GitHub) | https://github.com/gentili76/collettore-notifiche/edit/main/panel/test.html |
 | Segreti del repo | https://github.com/gentili76/collettore-notifiche/settings/secrets/actions |
 | Token GitHub (fine-grained) | https://github.com/settings/personal-access-tokens |
 | Console Firebase | https://console.firebase.google.com/project/collettore-notifiche-pdmhm/overview |
