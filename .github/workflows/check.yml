@@ -43,5 +43,15 @@ jobs:
             echo "Nessuna modifica allo stato."
           else
             git commit -m "chore: aggiorna stato sorgenti"
-            git push
+            # Altri commit possono arrivare su main nel frattempo (pannello, push manuali):
+            # riallinea e ritenta invece di fallire il run.
+            for i in 1 2 3; do
+              if git pull --rebase -q origin main && git push -q origin HEAD:main; then
+                exit 0
+              fi
+              echo "push rifiutato, nuovo tentativo tra 5 secondi"
+              sleep 5
+            done
+            echo "::error::impossibile pubblicare lo stato dopo 3 tentativi"
+            exit 1
           fi
